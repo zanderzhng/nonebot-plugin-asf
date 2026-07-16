@@ -1,10 +1,14 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, field_validator
+from typing import Any
+
+from pydantic import BaseModel, field_validator
 
 
-def parse_id_set(value: str) -> set[int]:
-    return {int(item.strip()) for item in value.split(",") if item.strip()}
+def parse_id_set(value: str | int | None) -> set[int]:
+    if value is None or value == "":
+        return set()
+    return {int(item.strip()) for item in str(value).split(",") if item.strip()}
 
 
 class Config(BaseModel):
@@ -15,6 +19,21 @@ class Config(BaseModel):
     asf_base_url: str = "http://asf:1242"
     asf_ipc_password: str = ""
     poll_timeout_seconds: int = 45
+
+    @field_validator(
+        "telegram_bot_token",
+        "telegram_proxy",
+        "telegram_allowed_user_ids",
+        "telegram_allowed_chat_ids",
+        "asf_base_url",
+        "asf_ipc_password",
+        mode="before",
+    )
+    @classmethod
+    def coerce_scalar_to_string(cls, value: Any) -> str:
+        if value is None:
+            return ""
+        return str(value)
 
     @field_validator("asf_base_url")
     @classmethod
