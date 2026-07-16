@@ -22,19 +22,16 @@ __plugin_meta__ = PluginMetadata(
 
 config = get_plugin_config(Config)
 
-if not config.allowed_user_ids and not config.allowed_chat_ids:
-    raise RuntimeError(
-        "Set TELEGRAM_ALLOWED_USER_IDS or TELEGRAM_ALLOWED_CHAT_IDS before starting the bot."
-    )
-
 driver = get_driver()
-telegram_bot = TelegramBot(config)
+telegram_bot: TelegramBot | None = None
 polling_task: asyncio.Task[None] | None = None
 
 
 @driver.on_startup
 async def start_polling() -> None:
-    global polling_task
+    global polling_task, telegram_bot
+    config.validate_runtime()
+    telegram_bot = TelegramBot(config)
     logging.getLogger("httpx").setLevel(logging.WARNING)
     polling_task = asyncio.create_task(telegram_bot.run())
     logger.info("nonebot_plugin_asf started")
@@ -48,5 +45,6 @@ async def stop_polling() -> None:
             await polling_task
         except asyncio.CancelledError:
             pass
-    await telegram_bot.close()
+    if telegram_bot:
+        await telegram_bot.close()
     logger.info("nonebot_plugin_asf stopped")
